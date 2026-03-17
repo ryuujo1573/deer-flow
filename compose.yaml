@@ -1,0 +1,113 @@
+services:
+  provisioner:
+    profiles:
+      - provisioner
+    image: deer-flow-provisioner:${DEER_FLOW_TAG:-dev}
+    build:
+      context: ./docker/provisioner
+      dockerfile: Dockerfile
+    container_name: deer-flow-provisioner
+    volumes:
+      - ~/.kube/config:/root/.kube/config:ro
+    environment:
+      - K8S_NAMESPACE=${K8S_NAMESPACE:-deer-flow}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest}
+      - SKILLS_HOST_PATH=${DEER_FLOW_ROOT:-/deer-flow}/skills
+      - THREADS_HOST_PATH=${DEER_FLOW_ROOT:-/deer-flow}/backend/.deer-flow/threads
+      - KUBECONFIG_PATH=/root/.kube/config
+      - NODE_HOST=${DEER_FLOW_SANDBOX_HOST:-host.docker.internal}
+      - K8S_API_SERVER=${K8S_API_SERVER:-https://host.docker.internal:26443}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  nginx:
+    image: nginx:alpine
+    container_name: deer-flow-nginx
+    volumes:
+      - ./docker/nginx/${NGINX_CONF:-nginx.local.conf}:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - gateway
+      - langgraph
+    networks:
+      - deer-flow
+    restart: unless-stopped
+
+  frontend:
+    image: deer-flow-frontend:${DEER_FLOW_TAG:-dev}
+    container_name: deer-flow-frontend
+    working_dir: /app
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
+      - CI=${CI:-true}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - deer-flow
+    restart: unless-stopped
+
+  gateway:
+    image: deer-flow-backend:${DEER_FLOW_TAG:-dev}
+    container_name: deer-flow-gateway
+    working_dir: /app
+    environment:
+      - CI=${CI:-true}
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT:-/deer-flow}/backend/.deer-flow
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT:-/deer-flow}/skills
+      - DEER_FLOW_SANDBOX_HOST=${DEER_FLOW_SANDBOX_HOST:-host.docker.internal}
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./extensions_config.json:/app/extensions_config.json
+      - ./skills:/app/skills
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gateway-venv:/app/backend/.venv
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - deer-flow
+    restart: unless-stopped
+
+  langgraph:
+    image: deer-flow-backend:${DEER_FLOW_TAG:-dev}
+    container_name: deer-flow-langgraph
+    working_dir: /app
+    environment:
+      - CI=${CI:-true}
+      - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT:-/deer-flow}/backend/.deer-flow
+      - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT:-/deer-flow}/skills
+      - DEER_FLOW_SANDBOX_HOST=${DEER_FLOW_SANDBOX_HOST:-host.docker.internal}
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./extensions_config.json:/app/extensions_config.json
+      - ./skills:/app/skills
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - langgraph-venv:/app/backend/.venv
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - deer-flow
+    restart: unless-stopped
+
+volumes:
+  gateway-venv:
+  langgraph-venv:
+
+networks:
+  deer-flow:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24
+

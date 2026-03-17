@@ -1,0 +1,16 @@
+{
+  "name": "deer-flow",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotenv -c -- docker compose up --build",
+    "stop": "docker compose down",
+    "prod": "dotenv -c production -- docker compose -f compose.yaml -f compose.prod.yaml up --build",
+    "prod:detach": "dotenv -c production -- docker compose -f compose.yaml -f compose.prod.yaml up --build -d",
+    "prod:logs": "docker compose -f compose.yaml -f compose.prod.yaml logs -f",
+    "prod:stop": "docker compose -f compose.yaml -f compose.prod.yaml down",
+    "logs": "docker compose logs",
+    "clean": "docker compose down -v --remove-orphans"
+  },
+  "packageManager": "pnpm@10.28.1"
+}

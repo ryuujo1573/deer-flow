@@ -1,0 +1,39 @@
+services:
+  nginx:
+    ports:
+      - "${DEER_FLOW_PORT:-2026}:2026"
+
+  frontend:
+    build:
+      context: ./
+      dockerfile: frontend/Dockerfile.prod
+      args:
+        PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
+    command: sh -c "cd frontend && pnpm run start > /app/logs/frontend.log 2>&1"
+    environment:
+      - NODE_ENV=production
+      - WATCHPACK_POLLING=false
+    volumes:
+      - ${PNPM_STORE_PATH:-~/.local/share/pnpm/store}:/root/.local/share/pnpm/store
+    env_file:
+      - ./frontend/.env
+
+  gateway:
+    build:
+      context: ./
+      dockerfile: backend/Dockerfile
+    command: sh -c "cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 > /app/logs/gateway.log 2>&1"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ~/.cache/uv:/root/.cache/uv
+
+  langgraph:
+    build:
+      context: ./
+      dockerfile: backend/Dockerfile
+    command: sh -c "cd backend && uv run langgraph dev --no-browser --allow-blocking --no-reload --host 0.0.0.0 --port 2024 > /app/logs/langgraph.log 2>&1"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ~/.cache/uv:/root/.cache/uv

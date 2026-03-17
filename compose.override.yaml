@@ -1,0 +1,39 @@
+services:
+  nginx:
+    ports:
+      - "${DEER_FLOW_PORT:-2026}:2026"
+
+  frontend:
+    build:
+      context: ./
+      dockerfile: frontend/Dockerfile
+      args:
+        PNPM_STORE_PATH: ${PNPM_STORE_PATH:-/root/.local/share/pnpm/store}
+    command: sh -c "cd frontend && pnpm run dev > /app/logs/frontend.log 2>&1"
+    volumes:
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
+      - ./frontend/next.config.js:/app/frontend/next.config.js:ro
+      - ${PNPM_STORE_PATH:-~/.local/share/pnpm/store}:/root/.local/share/pnpm/store
+    env_file:
+      - ./frontend/.env
+
+  gateway:
+    build:
+      context: ./
+      dockerfile: backend/Dockerfile
+    command: sh -c "cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 --reload --reload-include='*.yaml' --reload-include='.env' > /app/logs/gateway.log 2>&1"
+    volumes:
+      - ./backend/:/app/backend/
+      - gateway-venv:/app/backend/.venv
+      - ~/.cache/uv:/root/.cache/uv
+
+  langgraph:
+    build:
+      context: ./
+      dockerfile: backend/Dockerfile
+    command: sh -c "cd backend && uv run langgraph dev --no-browser --allow-blocking --host 0.0.0.0 --port 2024 > /app/logs/langgraph.log 2>&1"
+    volumes:
+      - ./backend/:/app/backend/
+      - langgraph-venv:/app/backend/.venv
+      - ~/.cache/uv:/root/.cache/uv
