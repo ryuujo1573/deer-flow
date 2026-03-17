@@ -12,11 +12,13 @@ cd "$REPO_ROOT"
 # ── Argument parsing ─────────────────────────────────────────────────────────
 
 DEV_MODE=true
+FOLLOW_LOGS=false
 for arg in "$@"; do
     case "$arg" in
         --dev)  DEV_MODE=true ;;
         --prod) DEV_MODE=false ;;
-        *) echo "Unknown argument: $arg"; echo "Usage: $0 [--dev|--prod]"; exit 1 ;;
+        --follow-logs) FOLLOW_LOGS=true ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: $0 [--dev|--prod] [--follow-logs]"; exit 1 ;;
     esac
 done
 
@@ -121,8 +123,10 @@ else
     GATEWAY_EXTRA_FLAGS=""
 fi
 
+export GATEWAY_PORT=8001
+
 echo "Starting LangGraph server..."
-(cd backend && NO_COLOR=1 uv run langgraph dev --no-browser --allow-blocking $LANGGRAPH_EXTRA_FLAGS > ../logs/langgraph.log 2>&1) &
+(cd backend && uv run langgraph dev --no-browser --allow-blocking $LANGGRAPH_EXTRA_FLAGS > ../logs/langgraph.log 2>&1) &
 ./scripts/wait-for-port.sh 2024 60 "LangGraph" || {
     echo "  See logs/langgraph.log for details"
     tail -20 logs/langgraph.log
@@ -135,8 +139,8 @@ echo "Starting LangGraph server..."
 echo "✓ LangGraph server started on localhost:2024"
 
 echo "Starting Gateway API..."
-(cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1) &
-./scripts/wait-for-port.sh 8001 30 "Gateway API" || {
+(cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port $GATEWAY_PORT $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1) &
+./scripts/wait-for-port.sh $GATEWAY_PORT 30 "Gateway API" || {
     echo "✗ Gateway API failed to start. Last log output:"
     tail -60 logs/gateway.log
     echo ""
@@ -146,7 +150,7 @@ echo "Starting Gateway API..."
     echo "  Hint: Try running 'make config-upgrade' to update your config.yaml with the latest fields."
     cleanup
 }
-echo "✓ Gateway API started on localhost:8001"
+echo "✓ Gateway API started on localhost:$GATEWAY_PORT"
 
 echo "Starting Frontend..."
 (cd frontend && $FRONTEND_CMD > ../logs/frontend.log 2>&1) &
@@ -188,6 +192,11 @@ echo "     - Gateway:   logs/gateway.log"
 echo "     - Frontend:  logs/frontend.log"
 echo "     - Nginx:     logs/nginx.log"
 echo ""
-echo "Press Ctrl+C to stop all services"
 
-wait
+if $FOLLOW_LOGS; then
+    echo "Following logs of all services... (Ctrl+C to stop)..."
+    python3 ./scripts/follow-logs.py
+else
+    echo "Press Ctrl+C to stop all services"
+    wait
+fi

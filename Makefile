@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check install dev dev-daemon start stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config config-upgrade check install logs dev dev-daemon start stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
 
 PYTHON ?= python
 
@@ -12,8 +12,11 @@ help:
 	@echo "  make install         - Install all dependencies (frontend + backend)"
 	@echo "  make setup-sandbox   - Pre-pull sandbox container image (recommended)"
 	@echo "  make dev             - Start all services in development mode (with hot-reloading)"
+	@echo "  make dev-logs        - Start dev services and follow combined logs"
 	@echo "  make dev-daemon      - Start all services in background (daemon mode)"
+	@echo "  make logs            - View combined logs of all services"
 	@echo "  make start           - Start all services in production mode (optimized, no hot-reloading)"
+	@echo "  make start-logs      - Start prod services and follow combined logs"
 	@echo "  make stop            - Stop all running services"
 	@echo "  make clean           - Clean up processes and temporary files"
 	@echo ""
@@ -84,13 +87,22 @@ setup-sandbox:
 		exit 1; \
 	fi
 
+logs:
+	@python3 ./scripts/follow-logs.py
+
 # Start all services in development mode (with hot-reloading)
 dev:
 	@./scripts/serve.sh --dev
 
+dev-logs:
+	@./scripts/serve.sh --dev --follow-logs
+
 # Start all services in production mode (with optimizations)
 start:
 	@./scripts/serve.sh --prod
+
+start-logs:
+	@./scripts/serve.sh --prod --follow-logs
 
 # Start all services in daemon mode (background)
 dev-daemon:
