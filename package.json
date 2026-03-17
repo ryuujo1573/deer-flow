@@ -12,5 +12,8 @@
     "logs": "docker compose logs",
     "clean": "docker compose down -v --remove-orphans"
   },
-  "packageManager": "pnpm@10.28.1"
+  "packageManager": "pnpm@10.28.1",
+  "devDependencies": {
+    "dotenv": "^17.3.1"
+  }
 }
