@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: deer-flow-frontend:${DEER_FLOW_TAG:-dev}
+    image: deer-flow-frontend:${npm_package_version:-dev}
     container_name: deer-flow-frontend
     working_dir: /app
     environment:
@@ -57,7 +57,7 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: deer-flow-backend:${DEER_FLOW_TAG:-dev}
+    image: deer-flow-backend:${npm_package_version:-dev}
     container_name: deer-flow-gateway
     working_dir: /app
     environment:
@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
 
   langgraph:
-    image: deer-flow-backend:${DEER_FLOW_TAG:-dev}
+    image: deer-flow-backend:${npm_package_version:-dev}
     container_name: deer-flow-langgraph
     working_dir: /app
     environment:
@@ -110,4 +110,3 @@ networks:
     ipam:
       config:
         - subnet: 192.168.200.0/24
-
